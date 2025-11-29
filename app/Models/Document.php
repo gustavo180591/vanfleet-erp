@@ -4,7 +4,6 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class Document extends Model
 {
@@ -16,15 +15,15 @@ class Document extends Model
         'type',
         'file_path',
         'original_name',
-        'mime_type'
+        'mime_type',
     ];
 
-    public function customer(): BelongsTo
+    public function customer()
     {
         return $this->belongsTo(Customer::class);
     }
 
-    public function rentalContract(): BelongsTo
+    public function rentalContract()
     {
         return $this->belongsTo(RentalContract::class);
     }

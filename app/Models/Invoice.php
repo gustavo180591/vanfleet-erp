@@ -4,7 +4,6 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class Invoice extends Model
 {
@@ -20,7 +19,7 @@ class Invoice extends Model
         'amount_total',
         'status',
         'pdf_path',
-        'verifactu_status'
+        'verifactu_status',
     ];
 
     protected $casts = [
@@ -28,11 +27,21 @@ class Invoice extends Model
         'due_date' => 'date',
         'amount_subtotal' => 'decimal:2',
         'amount_tax' => 'decimal:2',
-        'amount_total' => 'decimal:2'
+        'amount_total' => 'decimal:2',
     ];
 
-    public function rentalContract(): BelongsTo
+    public function rentalContract()
     {
         return $this->belongsTo(RentalContract::class);
+    }
+
+    public function customer()
+    {
+        return $this->hasOneThrough(Customer::class, RentalContract::class);
+    }
+
+    public function vehicle()
+    {
+        return $this->hasOneThrough(Vehicle::class, RentalContract::class);
     }
 }

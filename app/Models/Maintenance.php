@@ -4,7 +4,6 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class Maintenance extends Model
 {
@@ -16,16 +15,16 @@ class Maintenance extends Model
         'scheduled_date',
         'done_date',
         'cost',
-        'notes'
+        'notes',
     ];
 
     protected $casts = [
         'scheduled_date' => 'date',
         'done_date' => 'date',
-        'cost' => 'decimal:2'
+        'cost' => 'decimal:2',
     ];
 
-    public function vehicle(): BelongsTo
+    public function vehicle()
     {
         return $this->belongsTo(Vehicle::class);
     }
