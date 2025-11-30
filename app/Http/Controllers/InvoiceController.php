@@ -4,19 +4,19 @@ namespace App\Http\Controllers;
 
 use App\Models\Invoice;
 use App\Models\RentalContract;
+use App\Models\Customer;
 use Illuminate\Http\Request;
-use Illuminate\Support\Str;
 
 class InvoiceController extends Controller
 {
     /**
-     * Listado de facturas.
+     * Mostrar listado de facturas.
      */
     public function index(Request $request)
     {
         $status = $request->get('status');
-
-        $invoices = Invoice::with(['rentalContract.customer', 'rentalContract.vehicle'])
+        
+        $invoices = Invoice::with(['customer', 'rentalContract'])
             ->when($status, fn ($q) => $q->where('status', $status))
             ->orderByDesc('issue_date')
             ->paginate(15)
@@ -35,103 +35,178 @@ class InvoiceController extends Controller
             ->orderByDesc('created_at')
             ->get();
 
-        return view('invoices.create', compact('rentalContracts', 'contractId'));
+        $customers = Customer::orderBy('name')->get();
+
+        return view('invoices.create', compact('rentalContracts', 'customers', 'contractId'));
     }
 
     /**
-     * Guarda una nueva factura.
+     * Almacenar una nueva factura.
      */
     public function store(Request $request)
     {
-        $data = $request->validate([
-            'rental_contract_id' => ['required', 'exists:rental_contracts,id'],
-            'issue_date'         => ['required', 'date'],
-            'due_date'           => ['nullable', 'date'],
-            'amount_subtotal'    => ['required', 'numeric', 'min:0'],
-            'amount_tax'         => ['required', 'numeric', 'min:0'],
-            'amount_total'       => ['required', 'numeric', 'min:0'],
-            'status'             => ['required', 'string', 'max:50'],
+        $validated = $request->validate([
+            'rental_contract_id' => 'required|exists:rental_contracts,id',
+            'issue_date' => 'required|date',
+            'due_date' => 'required|date|after_or_equal:issue_date',
+            'status' => 'required|in:draft,sent,paid,overdue,cancelled',
+            'items' => 'required|array|min:1',
+            'items.*.description' => 'required|string',
+            'items.*.quantity' => 'required|numeric|min:0.01',
+            'items.*.unit_price' => 'required|numeric|min:0',
+            'notes' => 'nullable|string',
         ]);
 
-        // Generación simple de número de factura (después podés hacer algo más serio)
-        $data['invoice_number'] = $this->generateInvoiceNumber();
-        $data['verifactu_status'] = 'pending';
+        // Calcular totales
+        $subtotal = collect($validated['items'])->sum(function ($item) {
+            return $item['quantity'] * $item['unit_price'];
+        });
 
-        Invoice::create($data);
+        $tax = $subtotal * 0.21; // Asumiendo 21% de IVA
+        $total = $subtotal + $tax;
+
+        // Crear factura
+        $invoice = new Invoice();
+        $invoice->rental_contract_id = $validated['rental_contract_id'];
+        $invoice->invoice_number = 'INV-' . strtoupper(uniqid());
+        $invoice->issue_date = $validated['issue_date'];
+        $invoice->due_date = $validated['due_date'];
+        $invoice->status = $validated['status'];
+        $invoice->subtotal = $subtotal;
+        $invoice->tax = $tax;
+        $invoice->total = $total;
+        $invoice->notes = $validated['notes'] ?? null;
+        $invoice->save();
+
+        // Guardar items
+        foreach ($validated['items'] as $item) {
+            $invoice->items()->create([
+                'description' => $item['description'],
+                'quantity' => $item['quantity'],
+                'unit_price' => $item['unit_price'],
+                'total' => $item['quantity'] * $item['unit_price'],
+            ]);
+        }
 
         return redirect()
-            ->route('invoices.index')
-            ->with('success', 'Factura creada correctamente.');
+            ->route('app.invoices.show', $invoice)
+            ->with('success', 'Factura creada exitosamente');
     }
 
     /**
-     * Muestra detalle de una factura.
+     * Mostrar una factura específica.
      */
     public function show(Invoice $invoice)
     {
-        $invoice->load(['rentalContract.customer', 'rentalContract.vehicle']);
-
+        $invoice->load(['customer', 'rentalContract', 'items']);
         return view('invoices.show', compact('invoice'));
     }
 
     /**
-     * Formulario de edición.
+     * Mostrar formulario de edición de factura.
      */
     public function edit(Invoice $invoice)
     {
-        $invoice->load('rentalContract');
+        $rentalContracts = RentalContract::with(['customer', 'vehicle'])
+            ->orderByDesc('created_at')
+            ->get();
 
-        return view('invoices.edit', compact('invoice'));
+        $customers = Customer::orderBy('name')->get();
+        $invoice->load('items');
+
+        return view('invoices.edit', compact('invoice', 'rentalContracts', 'customers'));
     }
 
     /**
-     * Actualiza una factura.
+     * Actualizar una factura existente.
      */
     public function update(Request $request, Invoice $invoice)
     {
-        $data = $request->validate([
-            'issue_date'      => ['required', 'date'],
-            'due_date'        => ['nullable', 'date'],
-            'amount_subtotal' => ['required', 'numeric', 'min:0'],
-            'amount_tax'      => ['required', 'numeric', 'min:0'],
-            'amount_total'    => ['required', 'numeric', 'min:0'],
-            'status'          => ['required', 'string', 'max:50'],
-            'verifactu_status'=> ['nullable', 'string', 'max:50'],
+        $validated = $request->validate([
+            'rental_contract_id' => 'required|exists:rental_contracts,id',
+            'issue_date' => 'required|date',
+            'due_date' => 'required|date|after_or_equal:issue_date',
+            'status' => 'required|in:draft,sent,paid,overdue,cancelled',
+            'items' => 'required|array|min:1',
+            'items.*.description' => 'required|string',
+            'items.*.quantity' => 'required|numeric|min:0.01',
+            'items.*.unit_price' => 'required|numeric|min:0',
+            'notes' => 'nullable|string',
         ]);
 
-        $invoice->update($data);
+        // Calcular totales
+        $subtotal = collect($validated['items'])->sum(function ($item) {
+            return $item['quantity'] * $item['unit_price'];
+        });
+
+        $tax = $subtotal * 0.21; // Asumiendo 21% de IVA
+        $total = $subtotal + $tax;
+
+        // Actualizar factura
+        $invoice->rental_contract_id = $validated['rental_contract_id'];
+        $invoice->issue_date = $validated['issue_date'];
+        $invoice->due_date = $validated['due_date'];
+        $invoice->status = $validated['status'];
+        $invoice->subtotal = $subtotal;
+        $invoice->tax = $tax;
+        $invoice->total = $total;
+        $invoice->notes = $validated['notes'] ?? null;
+        $invoice->save();
+
+        // Eliminar items existentes
+        $invoice->items()->delete();
+
+        // Guardar nuevos items
+        foreach ($validated['items'] as $item) {
+            $invoice->items()->create([
+                'description' => $item['description'],
+                'quantity' => $item['quantity'],
+                'unit_price' => $item['unit_price'],
+                'total' => $item['quantity'] * $item['unit_price'],
+            ]);
+        }
 
         return redirect()
-            ->route('invoices.show', $invoice)
-            ->with('success', 'Factura actualizada correctamente.');
+            ->route('app.invoices.show', $invoice)
+            ->with('success', 'Factura actualizada exitosamente');
     }
 
     /**
-     * Elimina una factura.
+     * Eliminar una factura.
      */
     public function destroy(Invoice $invoice)
     {
+        $invoice->items()->delete();
         $invoice->delete();
 
         return redirect()
-            ->route('invoices.index')
-            ->with('success', 'Factura eliminada correctamente.');
+            ->route('app.invoices.index')
+            ->with('success', 'Factura eliminada exitosamente');
     }
 
     /**
-     * Genera un número de factura básico.
-     * Ej: INV-2025-000001
+     * Descargar factura en PDF.
      */
-    protected function generateInvoiceNumber(): string
+    public function download(Invoice $invoice)
     {
-        $year = now()->year;
+        $invoice->load(['customer', 'rentalContract', 'items']);
+        $pdf = \PDF::loadView('invoices.pdf', compact('invoice'));
+        return $pdf->download("factura-{$invoice->invoice_number}.pdf");
+    }
 
-        $last = Invoice::whereYear('issue_date', $year)
-            ->orderByDesc('id')
-            ->first();
+    /**
+     * Enviar factura por correo electrónico.
+     */
+    public function sendEmail(Request $request, Invoice $invoice)
+    {
+        $request->validate([
+            'email' => 'required|email',
+        ]);
 
-        $nextNumber = $last ? ((int) Str::afterLast($last->invoice_number, '-') + 1) : 1;
+        $invoice->load(['customer', 'rentalContract', 'items']);
 
-        return sprintf('INV-%s-%06d', $year, $nextNumber);
+        \Mail::to($request->email)->send(new \App\Mail\InvoiceSent($invoice));
+
+        return back()->with('success', 'Factura enviada por correo electrónico');
     }
 }

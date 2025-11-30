@@ -15,84 +15,78 @@ class RentalContractController extends Controller
             ->orderByDesc('created_at')
             ->paginate(15);
 
-        return view('rental_contracts.index', compact('contracts'));
+        return view('rental-contracts.index', compact('contracts'));
     }
 
     public function create()
     {
         $customers = Customer::orderBy('name')->get();
-        $vehicles  = Vehicle::orderBy('plate')->get();
+        $vehicles = Vehicle::orderBy('plate')->get();
 
-        return view('rental_contracts.create', compact('customers', 'vehicles'));
+        return view('rental-contracts.create', compact('customers', 'vehicles'));
     }
 
     public function store(Request $request)
     {
-        $data = $request->validate([
-            'customer_id'     => ['required', 'exists:customers,id'],
-            'vehicle_id'      => ['required', 'exists:vehicles,id'],
-            'start_date'      => ['required', 'date'],
-            'end_date'        => ['required', 'date', 'after_or_equal:start_date'],
-            'price_per_day'   => ['required', 'numeric', 'min:0'],
-            'included_km'     => ['nullable', 'integer', 'min:0'],
-            'max_km'          => ['nullable', 'integer', 'min:0'],
-            'status'          => ['required', 'string', 'max:50'],
-            'notes'           => ['nullable', 'string'],
+        $validated = $request->validate([
+            'customer_id' => 'required|exists:customers,id',
+            'vehicle_id' => 'required|exists:vehicles,id',
+            'start_date' => 'required|date',
+            'end_date' => 'required|date|after:start_date',
+            'rental_type' => 'required|in:daily,weekly,monthly',
+            'monthly_rate' => 'required|numeric|min:0',
+            'security_deposit' => 'nullable|numeric|min:0',
+            'terms' => 'nullable|string',
         ]);
 
-        // TODO: validar solapamiento de reservas para el vehículo
-
-        RentalContract::create($data);
+        $contract = RentalContract::create($validated);
 
         return redirect()
-            ->route('rental-contracts.index')
-            ->with('success', 'Contrato creado correctamente.');
+            ->route('app.rental-contracts.show', $contract)
+            ->with('success', 'Contrato creado exitosamente');
     }
 
-    public function show(RentalContract $rentalContract)
+    public function show(RentalContract $contract)
     {
-        $rentalContract->load(['customer', 'vehicle', 'invoice', 'documents']);
-
-        return view('rental_contracts.show', compact('rentalContract'));
+        $contract->load(['customer', 'vehicle', 'payments']);
+        return view('rental-contracts.show', compact('contract'));
     }
 
-    public function edit(RentalContract $rentalContract)
+    public function edit(RentalContract $contract)
     {
         $customers = Customer::orderBy('name')->get();
-        $vehicles  = Vehicle::orderBy('plate')->get();
+        $vehicles = Vehicle::orderBy('plate')->get();
 
-        return view('rental_contracts.edit', compact('rentalContract', 'customers', 'vehicles'));
+        return view('rental-contracts.edit', compact('contract', 'customers', 'vehicles'));
     }
 
-    public function update(Request $request, RentalContract $rentalContract)
+    public function update(Request $request, RentalContract $contract)
     {
-        $data = $request->validate([
-            'customer_id'     => ['required', 'exists:customers,id'],
-            'vehicle_id'      => ['required', 'exists:vehicles,id'],
-            'start_date'      => ['required', 'date'],
-            'end_date'        => ['required', 'date', 'after_or_equal:start_date'],
-            'price_per_day'   => ['required', 'numeric', 'min:0'],
-            'included_km'     => ['nullable', 'integer', 'min:0'],
-            'max_km'          => ['nullable', 'integer', 'min:0'],
-            'status'          => ['required', 'string', 'max:50'],
-            'notes'           => ['nullable', 'string'],
+        $validated = $request->validate([
+            'customer_id' => 'required|exists:customers,id',
+            'vehicle_id' => 'required|exists:vehicles,id',
+            'start_date' => 'required|date',
+            'end_date' => 'required|date|after:start_date',
+            'rental_type' => 'required|in:daily,weekly,monthly',
+            'monthly_rate' => 'required|numeric|min:0',
+            'security_deposit' => 'nullable|numeric|min:0',
+            'status' => 'required|in:active,completed,cancelled',
+            'terms' => 'nullable|string',
         ]);
 
-        // TODO: validar solapamiento
-
-        $rentalContract->update($data);
+        $contract->update($validated);
 
         return redirect()
-            ->route('rental-contracts.index')
-            ->with('success', 'Contrato actualizado correctamente.');
+            ->route('app.rental-contracts.show', $contract)
+            ->with('success', 'Contrato actualizado exitosamente');
     }
 
-    public function destroy(RentalContract $rentalContract)
+    public function destroy(RentalContract $contract)
     {
-        $rentalContract->delete();
+        $contract->delete();
 
         return redirect()
-            ->route('rental-contracts.index')
-            ->with('success', 'Contrato eliminado correctamente.');
+            ->route('app.rental-contracts.index')
+            ->with('success', 'Contrato eliminado exitosamente');
     }
 }

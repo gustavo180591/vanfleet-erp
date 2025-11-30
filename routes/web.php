@@ -1,24 +1,48 @@
 <?php
 
+use App\Http\Controllers\ProfileController;
+use App\Http\Controllers\DashboardController;
 use Illuminate\Support\Facades\Route;
-use App\Http\Controllers\CustomerController;
-use App\Http\Controllers\VehicleController;
-use App\Http\Controllers\RentalContractController;
-use App\Http\Controllers\InvoiceController;
-use App\Http\Controllers\MaintenanceController;
-use App\Http\Controllers\DocumentController;
 
-// Ruta inicial: redirige al listado de clientes o a un dashboard
+// Public routes
 Route::get('/', function () {
-    return redirect()->route('customers.index');
-})->name('home');
+    return view('welcome');
+});
 
-// Grupo de rutas del ERP (en el futuro acá podríamos meter middleware de auth)
-Route::prefix('app')->group(function () {
-    Route::resource('customers', CustomerController::class);
-    Route::resource('vehicles', VehicleController::class);
-    Route::resource('rental-contracts', RentalContractController::class);
-    Route::resource('invoices', InvoiceController::class);
-    Route::resource('maintenances', MaintenanceController::class);
-    Route::resource('documents', DocumentController::class)->only(['index', 'show', 'destroy']);
+// Authentication routes
+require __DIR__.'/auth.php';
+
+// Authenticated routes
+Route::middleware(['auth', 'verified'])->group(function () {
+    // Dashboard
+    Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
+    
+    // Profile routes
+    Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
+    Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
+    Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
+
+    // Redirect root to dashboard for authenticated users
+    Route::redirect('/', '/dashboard');
+});
+
+// App Routes
+Route::middleware('auth')->prefix('app')->name('app.')->group(function () {
+    // Vehicles
+    Route::resource('vehicles', \App\Http\Controllers\VehicleController::class);
+    
+    // Customers
+    Route::resource('customers', \App\Http\Controllers\CustomerController::class);
+    
+    // Rental Contracts
+    Route::resource('rental-contracts', \App\Http\Controllers\RentalContractController::class);
+    
+    // Invoices
+    Route::resource('invoices', \App\Http\Controllers\InvoiceController::class);
+    
+    // Maintenances
+    Route::resource('maintenances', \App\Http\Controllers\MaintenanceController::class);
+    
+    // Documents
+    Route::resource('documents', \App\Http\Controllers\DocumentController::class);
 });

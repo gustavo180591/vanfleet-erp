@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Customer;
 use Illuminate\Http\Request;
 
+
 class CustomerController extends Controller
 {
     /**
@@ -55,7 +56,7 @@ class CustomerController extends Controller
         Customer::create($data);
 
         return redirect()
-            ->route('customers.index')
+            ->route('app.customers.index')
             ->with('success', 'Cliente creado correctamente.');
     }
 
@@ -64,9 +65,7 @@ class CustomerController extends Controller
      */
     public function show(Customer $customer)
     {
-        // Luego acá podemos cargar contratos, documentos, etc.
         $customer->load(['rentalContracts.vehicle', 'documents']);
-
         return view('customers.show', compact('customer'));
     }
 
@@ -97,7 +96,7 @@ class CustomerController extends Controller
         $customer->update($data);
 
         return redirect()
-            ->route('customers.index')
+            ->route('app.customers.index')
             ->with('success', 'Cliente actualizado correctamente.');
     }
 
@@ -109,7 +108,7 @@ class CustomerController extends Controller
         $customer->delete();
 
         return redirect()
-            ->route('customers.index')
+            ->route('app.customers.index')
             ->with('success', 'Cliente eliminado correctamente.');
     }
 }
