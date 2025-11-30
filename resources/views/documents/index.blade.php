@@ -10,7 +10,7 @@
             <div class="container mx-auto px-4 py-6">
     <div class="flex justify-between items-center mb-6">
         <h1 class="text-2xl font-bold text-gray-800">Document Management</h1>
-        <a href="{{ route('app.documents.create') }}" class="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-md">
+        <a href="{{ route('app.documents.create') }}" class="inline-flex items-center px-3 py-2 text-sm font-medium rounded-md bg-emerald-600 text-white hover:bg-emerald-500">
             Upload New Document
         </a>
     </div>
@@ -54,7 +54,7 @@
             </div>
 
             <div class="flex items-end">
-                <button type="submit" class="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-md w-full">
+                <button type="submit" class="inline-flex justify-center items-center px-3 py-2 text-sm font-medium rounded-md bg-emerald-600 text-white hover:bg-emerald-500 w-full">
                     Filter
                 </button>
             </div>
@@ -80,8 +80,8 @@
                         <tr>
                             <td class="px-6 py-4 whitespace-nowrap">
                                 <div class="flex items-center">
-                                    <div class="flex-shrink-0 h-10 w-10 flex items-center justify-center bg-blue-100 rounded-md">
-                                        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <div class="flex-shrink-0 h-10 w-10 flex items-center justify-center bg-emerald-100 rounded-md">
+                                        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-emerald-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                                         </svg>
                                     </div>
@@ -100,8 +100,8 @@
                             <td class="px-6 py-4 whitespace-nowrap">
                                 @php
                                     $typeColors = [
-                                        'contract' => 'bg-blue-100 text-blue-800',
-                                        'invoice' => 'bg-green-100 text-green-800',
+                                        'contract' => 'bg-emerald-100 text-emerald-800',
+                                        'invoice' => 'bg-emerald-100 text-emerald-800',
                                         'receipt' => 'bg-purple-100 text-purple-800',
                                         'other' => 'bg-gray-100 text-gray-800'
                                     ][$document->type] ?? 'bg-gray-100 text-gray-800';
